@@ -80,9 +80,6 @@ def get_notebooks_info() -> [Notebook]:
     page = requests.get(BASE_URL, headers=HEADERS).content
     soup = BeautifulSoup(page, "html.parser")
 
-    list_item_test = soup.select_one(".list-item__info").name
-    print(list_item_test)
-
     all_notebook_divs = soup.select(".list-item")
 
     parsed_notebooks = [
