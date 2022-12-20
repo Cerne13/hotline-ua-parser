@@ -71,16 +71,16 @@ def parse_single_laptop(laptop: [Tag]) -> Laptop:
     )
 
 
-def filter_laptops(parsed_laptops, db_file):
-    needed_laptop_titles = parse_data_file(db_file)
+def parse_single_page(laptop_divs, db_file) -> [Laptop]:
+    laptop_list = []
 
-    filtered_list = []
+    for laptop in laptop_divs:
+        laptop_title = laptop.select_one(".list-item__title").text.strip()
+        if laptop_title in db_file:
+            print(f" Found {laptop_title}")
+            laptop_list.append(parse_single_laptop(laptop))
 
-    for laptop in parsed_laptops:
-        if astuple(laptop)[0] in needed_laptop_titles:
-            filtered_list.append(laptop)
-
-    return filtered_list
+    return laptop_list
 
 
 def get_laptops_info() -> [Laptop]:
@@ -89,10 +89,12 @@ def get_laptops_info() -> [Laptop]:
 
     all_laptop_divs = soup.select(".list-item")
 
-    parsed_laptops = [
-        parse_single_laptop(laptop)
-        for laptop in all_laptop_divs
-    ]
+    needed_items = parse_data_file(ITEMS_LIST)
+    parsed_laptops = []
+
+    print("Parsing started")
+
+    parsed_laptops.extend(parse_single_page(all_laptop_divs, needed_items))
 
     # pagination
     next_page_disabled = soup.select_one("a.page--next.page--disabled")
@@ -120,14 +122,13 @@ def get_laptops_info() -> [Laptop]:
         page += 1
 
         all_laptop_divs = soup.select(".list-item")
-        parsed_laptops.extend([
-            parse_single_laptop(laptop)
-            for laptop in all_laptop_divs
-        ])
 
-    filtered_list = filter_laptops(parsed_laptops, ITEMS_LIST)
+        parsed_laptops.extend(parse_single_page(all_laptop_divs, needed_items))
 
-    return filtered_list
+        if len(parsed_laptops) == len(needed_items):
+            break
+
+    return parsed_laptops
 
 
 def write_to_file(output_csv_path: str) -> None:
