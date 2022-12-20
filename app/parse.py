@@ -11,7 +11,7 @@ NOTEBOOKS_LIST = 'items.txt'
 
 
 @dataclass
-class Notebook:
+class Laptop:
     title: str
     available: bool
     propositions_quantity: int | None
@@ -27,16 +27,16 @@ def parse_data_file(filename) -> list:
     return df_list
 
 
-def parse_single_notebook(notebook: [Tag]) -> Notebook:
-    title = notebook.select_one(".list-item__title").text.strip()
+def parse_single_laptop(laptop: [Tag]) -> Laptop:
+    title = laptop.select_one(".list-item__title").text.strip()
 
-    main_price = notebook.select_one(".price__value")
+    main_price = laptop.select_one(".price__value")
     main_price_value = (
         int(main_price.text.replace(u"\xa0", u""))
         if main_price else None
     )
 
-    quantity_elem = notebook.find(
+    quantity_elem = laptop.find(
         "a", attrs={
             "data-eventaction": "Priceline",
             "class": "link link--black text-sm m_b-5"
@@ -48,13 +48,13 @@ def parse_single_notebook(notebook: [Tag]) -> Notebook:
     max_price = None
 
     if quantity and quantity > 3:
-        minmax_prices = notebook.select_one(".m_b-5 > .text-sm") \
+        minmax_prices = laptop.select_one(".m_b-5 > .text-sm") \
             .text.replace(u"\xa0", u"").strip().split()
         if minmax_prices[-1] == 'грн':
             min_price = int(minmax_prices[0])
             max_price = int(minmax_prices[2])
 
-    return Notebook(
+    return Laptop(
         title=title,
         available=True if main_price else False,
         propositions_quantity=quantity,
@@ -64,27 +64,27 @@ def parse_single_notebook(notebook: [Tag]) -> Notebook:
     )
 
 
-def filter_notebooks(parsed_notebooks, db_file):
-    needed_notebooks_titles = parse_data_file(db_file)
+def filter_laptops(parsed_laptops, db_file):
+    needed_laptop_titles = parse_data_file(db_file)
 
     filtered_list = []
 
-    for notebook in parsed_notebooks:
-        if astuple(notebook)[0] in needed_notebooks_titles:
-            filtered_list.append(notebook)
+    for laptop in parsed_laptops:
+        if astuple(laptop)[0] in needed_laptop_titles:
+            filtered_list.append(laptop)
 
     return filtered_list
 
 
-def get_notebooks_info() -> [Notebook]:
+def get_laptops_info() -> [Laptop]:
     page = requests.get(BASE_URL, headers=HEADERS).content
-    soup = BeautifulSoup(page, "html.parser")
+    soup = BeautifulSoup(page.find("div", {"class": list-body}), "html.parser")
 
-    all_notebook_divs = soup.select(".list-item")
+    all_laptop_divs = soup.select(".list-item")
 
-    parsed_notebooks = [
-        parse_single_notebook(notebook)
-        for notebook in all_notebook_divs
+    parsed_laptops = [
+        parse_single_laptop(laptop)
+        for laptop in all_laptop_divs
     ]
 
     # pagination
@@ -112,13 +112,13 @@ def get_notebooks_info() -> [Notebook]:
 
         page += 1
 
-        all_notebook_divs = soup.select(".list-item")
-        parsed_notebooks.extend([
-            parse_single_notebook(notebook)
-            for notebook in all_notebook_divs
+        all_laptop_divs = soup.select(".list-item")
+        parsed_laptops.extend([
+            parse_single_laptop(laptop)
+            for laptop in all_laptop_divs
         ])
 
-    filtered_list = filter_notebooks(parsed_notebooks, NOTEBOOKS_LIST)
+    filtered_list = filter_laptops(parsed_laptops, NOTEBOOKS_LIST)
 
     return filtered_list
 
@@ -131,9 +131,9 @@ def write_to_file(output_csv_path: str) -> None:
             newline=""
     ) as file:
         writer = csv.writer(file)
-        writer.writerow([field.name for field in fields(Notebook)])
-        writer.writerows([astuple(notebook) for notebook in get_notebooks_info()])
+        writer.writerow([field.name for field in fields(Laptop)])
+        writer.writerows([astuple(laptop) for laptop in get_laptops_info()])
 
 
 if __name__ == "__main__":
-    write_to_file("notebooks.csv")
+    write_to_file("laptops.csv")
