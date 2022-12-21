@@ -123,13 +123,14 @@ def get_item_changes_info(laptop, previously_got_list):
             print("\n")
 
 
-def parse_single_page(laptop_divs, db_file, previously_got_list) -> [Laptop]:
+def parse_single_page(soup, needed_items, previously_got_list) -> [Laptop]:
     laptop_list = []
+    laptop_divs = soup.select(".list-item")
 
     for laptop in laptop_divs:
         laptop_title = laptop.select_one(".list-item__title").text.strip()
 
-        if laptop_title in db_file:
+        if laptop_title in needed_items:
             laptop_obj = parse_single_laptop(laptop)
             laptop_list.append(laptop_obj)
 
@@ -138,32 +139,17 @@ def parse_single_page(laptop_divs, db_file, previously_got_list) -> [Laptop]:
     return laptop_list
 
 
-def test_page_content_got_successfully(soup: BeautifulSoup) -> None:
-    list_item_test = soup.select_one(".list-item__info").name
-    print(
-        "Contents got successfully"
-        if list_item_test is not None
-        else "Request blocked. You should try different VPN."
-    )
-
-
 def get_laptops_info() -> [Laptop]:
     page = requests.get(BASE_URL, headers=HEADERS).content
     soup = BeautifulSoup(page, "html.parser")
 
     needed_items = parse_data_file(ITEMS_LIST)
-
-    # TODO: replace w/actual list
-    previously_got_list = parse_previously_got_csv("laptops1.csv")
+    previously_got_list = parse_previously_got_csv(OUTPUT_FILE)
     parsed_laptops = []
 
-    all_laptop_divs = soup.select(".list-item")
-
-    parsed_laptops.extend(parse_single_page(
-        all_laptop_divs,
-        needed_items,
-        previously_got_list
-    ))
+    parsed_laptops.extend(
+        parse_single_page(soup, needed_items, previously_got_list)
+    )
 
     # pagination
     next_page_disabled = soup.select_one("a.page--next.page--disabled")
@@ -180,17 +166,13 @@ def get_laptops_info() -> [Laptop]:
         soup = BeautifulSoup(next_page, "html.parser")
         next_page_disabled = soup.select_one("a.page--next.page--disabled")
 
-        test_page_content_got_successfully(soup)
-
-        page += 1
-
-        all_laptop_divs = soup.select(".list-item")
-
         parsed_laptops.extend(parse_single_page(
-            all_laptop_divs,
+            soup,
             needed_items,
             previously_got_list
         ))
+
+        page += 1
 
         if len(parsed_laptops) == len(needed_items):
             break
