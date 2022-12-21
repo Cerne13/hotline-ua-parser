@@ -96,9 +96,7 @@ def parse_previously_got_csv(filename: str) -> list:
     return laptop_list
 
 
-def get_item_changes_info(laptop, previously_got_list):
-    laptop_obj = parse_single_laptop(laptop)
-
+def get_item_changes_info(laptop_obj, previously_got_list):
     for item in previously_got_list:
         if item[0] == laptop_obj.title:
             print(f"{item[0]} was previously parsed.")
@@ -134,7 +132,7 @@ def parse_single_page(soup, needed_items, previously_got_list) -> [Laptop]:
             laptop_obj = parse_single_laptop(laptop)
             laptop_list.append(laptop_obj)
 
-            get_item_changes_info(laptop, previously_got_list)
+            get_item_changes_info(laptop_obj, previously_got_list)
 
     return laptop_list
 
