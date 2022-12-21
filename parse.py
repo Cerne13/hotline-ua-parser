@@ -1,6 +1,10 @@
 import csv
+import os.path
 from dataclasses import dataclass, astuple, fields
 from urllib.parse import urljoin
+
+import numpy as np
+import pandas as pd
 
 import requests
 from bs4 import BeautifulSoup, Tag
@@ -71,30 +75,93 @@ def parse_single_laptop(laptop: [Tag]) -> Laptop:
     )
 
 
-def parse_single_page(laptop_divs, db_file) -> [Laptop]:
+def parse_previously_got_csv(filename: str) -> list:
+    laptop_list = []
+
+    if os.path.isfile(filename) and os.stat(filename).st_size > 0:
+        df = pd.read_csv(
+            filename,
+            header=0,
+            usecols=["title", "main_price", "min_price", "max_price"]
+        ).replace(np.nan, None)
+
+        for i, row in df.iterrows():
+            laptop_list.append([
+                row["title"],
+                row["main_price"],
+                row["min_price"],
+                row["max_price"],
+            ])
+
+    return laptop_list
+
+
+def get_item_changes_info(laptop, previously_got_list):
+    laptop_obj = parse_single_laptop(laptop)
+
+    for item in previously_got_list:
+        if item[0] == laptop_obj.title:
+            print(f"{item[0]} was previously parsed.")
+
+            if item[1] != laptop_obj.main_price:
+                print(
+                    f"Price has changed: {item[1]} -> "
+                    f"{laptop_obj.main_price}"
+                )
+
+            if item[2] != laptop_obj.min_price:
+                print(
+                    f"Min price changed: {item[2]} -> "
+                    f"{laptop_obj.min_price}"
+                )
+
+            if item[3] != laptop_obj.max_price:
+                print(
+                    f"Max price changed: {item[3]} -> "
+                    f"{laptop_obj.max_price}"
+                )
+            print("\n")
+
+
+def parse_single_page(laptop_divs, db_file, previously_got_list) -> [Laptop]:
     laptop_list = []
 
     for laptop in laptop_divs:
         laptop_title = laptop.select_one(".list-item__title").text.strip()
+
         if laptop_title in db_file:
-            print(f" Found {laptop_title}")
-            laptop_list.append(parse_single_laptop(laptop))
+            laptop_obj = parse_single_laptop(laptop)
+            laptop_list.append(laptop_obj)
+
+            get_item_changes_info(laptop, previously_got_list)
 
     return laptop_list
+
+
+def test_page_content_got_successfully(soup: BeautifulSoup) -> None:
+    list_item_test = soup.select_one(".list-item__info").name
+    print(
+        "Contents got successfully"
+        if list_item_test is not None
+        else "Request blocked. You should try different VPN."
+    )
 
 
 def get_laptops_info() -> [Laptop]:
     page = requests.get(BASE_URL, headers=HEADERS).content
     soup = BeautifulSoup(page, "html.parser")
 
-    all_laptop_divs = soup.select(".list-item")
-
     needed_items = parse_data_file(ITEMS_LIST)
+    previously_got_list = parse_previously_got_csv("laptops1.csv")
     parsed_laptops = []
 
-    print("Parsing started")
+    all_laptop_divs = soup.select(".list-item")
 
-    parsed_laptops.extend(parse_single_page(all_laptop_divs, needed_items))
+    parsed_laptops.extend(parse_single_page(
+        all_laptop_divs,
+        needed_items,
+        previously_got_list
+    ))
 
     # pagination
     next_page_disabled = soup.select_one("a.page--next.page--disabled")
@@ -111,19 +178,17 @@ def get_laptops_info() -> [Laptop]:
         soup = BeautifulSoup(next_page, "html.parser")
         next_page_disabled = soup.select_one("a.page--next.page--disabled")
 
-        # Just a test item to see if contents is got successfully
-        list_item_test = soup.select_one(".list-item__info").name
-        print(
-            "Contents got successfully"
-            if list_item_test is not None
-            else "Request blocked. You should try different VPN."
-        )
+        test_page_content_got_successfully(soup)
 
         page += 1
 
         all_laptop_divs = soup.select(".list-item")
 
-        parsed_laptops.extend(parse_single_page(all_laptop_divs, needed_items))
+        parsed_laptops.extend(parse_single_page(
+            all_laptop_divs,
+            needed_items,
+            previously_got_list
+        ))
 
         if len(parsed_laptops) == len(needed_items):
             break
@@ -131,7 +196,7 @@ def get_laptops_info() -> [Laptop]:
     return parsed_laptops
 
 
-def write_to_file(output_csv_path: str) -> None:
+def write_to_file(output_csv_path: str, laptops_list: [Laptop]) -> None:
     with open(
             output_csv_path,
             "w",
@@ -140,8 +205,9 @@ def write_to_file(output_csv_path: str) -> None:
     ) as file:
         writer = csv.writer(file)
         writer.writerow([field.name for field in fields(Laptop)])
-        writer.writerows([astuple(laptop) for laptop in get_laptops_info()])
+        writer.writerows([astuple(laptop) for laptop in laptops_list])
 
 
 if __name__ == "__main__":
-    write_to_file(OUTPUT_FILE)
+    laptops = get_laptops_info()
+    write_to_file(OUTPUT_FILE, laptops)
