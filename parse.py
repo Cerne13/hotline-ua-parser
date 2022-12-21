@@ -20,10 +20,10 @@ HEADERS = {'User-Agent': 'Mozilla/5.0'}
 class Laptop:
     title: str
     available: bool
-    propositions_quantity: int | None
-    main_price: int | None
-    min_price: int | None
-    max_price: int | None
+    propositions_quantity: int
+    main_price: int
+    min_price: int
+    max_price: int
 
 
 def parse_data_file(filename) -> list:
@@ -39,7 +39,7 @@ def parse_single_laptop(laptop: [Tag]) -> Laptop:
     main_price = laptop.select_one(".price__value")
     main_price_value = (
         int(main_price.text.replace(u"\xa0", u""))
-        if main_price else None
+        if main_price else 0
     )
 
     quantity_elem = laptop.find(
@@ -49,14 +49,14 @@ def parse_single_laptop(laptop: [Tag]) -> Laptop:
         }
     )
 
-    quantity = None
+    quantity = 0
     if quantity_elem:
         quantity = int(quantity_elem.text.strip().split("(")[-1][:-1])
     elif main_price:
         quantity = 1
 
-    min_price = None
-    max_price = None
+    min_price = 0
+    max_price = 0
 
     if quantity and quantity > 3:
         minmax_prices = laptop.select_one(".m_b-5 > .text-sm") \
@@ -111,13 +111,13 @@ def get_item_changes_info(laptop, previously_got_list):
 
             if item[2] != laptop_obj.min_price:
                 print(
-                    f"Min price changed: {item[2]} -> "
+                    f"Min price changed: {int(item[2])} -> "
                     f"{laptop_obj.min_price}"
                 )
 
             if item[3] != laptop_obj.max_price:
                 print(
-                    f"Max price changed: {item[3]} -> "
+                    f"Max price changed: {int(item[3])} -> "
                     f"{laptop_obj.max_price}"
                 )
             print("\n")
@@ -152,6 +152,8 @@ def get_laptops_info() -> [Laptop]:
     soup = BeautifulSoup(page, "html.parser")
 
     needed_items = parse_data_file(ITEMS_LIST)
+
+    # TODO: replace w/actual list
     previously_got_list = parse_previously_got_csv("laptops1.csv")
     parsed_laptops = []
 
