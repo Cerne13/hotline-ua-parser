@@ -1,5 +1,6 @@
 import csv
 import os.path
+import random
 from dataclasses import dataclass, astuple, fields
 from urllib.parse import urljoin
 
@@ -13,7 +14,23 @@ BASE_URL = "https://hotline.ua/ua/computer/noutbuki-netbuki/33373/"
 ITEMS_LIST = "items.txt"
 OUTPUT_FILE = "laptops.csv"
 
-HEADERS = {'User-Agent': 'Mozilla/5.0'}
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 6.1; rv:40.0) Gecko/20100101 Firefox/40.0",
+    "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.10; rv:75.0) Gecko/20100101 Firefox/75.0",
+    "Mozilla/5.0 (X11; Linux; rv:74.0) Gecko/20100101 Firefox/74.0",
+    "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 6.4; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2225.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1667.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:47.0) Gecko/20100101 Firefox/47.0",
+    "Mozilla/5.0 (Windows NT 6.1; U;WOW64; de;rv:11.0) Gecko Firefox/11.0",
+    "Mozilla/5.0 (X11; ; Linux x86_64; rv:1.8.1.6) Gecko/20070802 Firefox",
+    "Chrome/45.0.2454.85 Safari/537.36",
+]
+
+
+def get_random_header(user_agents: list) -> dict[str, str]:
+    return {"User-Agent": random.choice(user_agents)}
 
 
 @dataclass
@@ -138,7 +155,7 @@ def parse_single_page(soup, needed_items, previously_got_list) -> [Laptop]:
 
 
 def get_laptops_info() -> [Laptop]:
-    page = requests.get(BASE_URL, headers=HEADERS).content
+    page = requests.get(BASE_URL, headers=get_random_header(USER_AGENTS)).content
     soup = BeautifulSoup(page, "html.parser")
 
     needed_items = parse_data_file(ITEMS_LIST)
@@ -158,7 +175,7 @@ def get_laptops_info() -> [Laptop]:
 
         next_page = requests.get(
             urljoin(BASE_URL, f"?p={page}"),
-            headers=HEADERS
+            headers=get_random_header(USER_AGENTS)
         ).content
 
         soup = BeautifulSoup(next_page, "html.parser")
@@ -190,6 +207,10 @@ def write_to_file(output_csv_path: str, laptops_list: [Laptop]) -> None:
         writer.writerows([astuple(laptop) for laptop in laptops_list])
 
 
-if __name__ == "__main__":
+def main():
     laptops = get_laptops_info()
     write_to_file(OUTPUT_FILE, laptops)
+
+
+if __name__ == "__main__":
+    main()
