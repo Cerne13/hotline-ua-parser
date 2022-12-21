@@ -1,6 +1,9 @@
 # Hotline.ua parser
-Simple parser for hotline.ua that gets needed items from certain category 
+Simple parser for hotline.ua made w/ Beautifulsoup, requests, pandas.
+Gets needed items from certain category 
 and stores data in the specified .csv file.
+Also shows price changes if an item was previously parsed 
+(prints price changes to console).
 
 ***
 
